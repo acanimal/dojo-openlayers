@@ -1,0 +1,185 @@
+<!DOCTYPE HTML>
+<html>
+    <head> 
+        <title>Dojo + OpenLayers = New Challenge</title>
+        <style>
+            html, body {
+                width: 100%; 
+                height: 100%;
+            }
+        </style>
+        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/dojo/1.7.1/dojo/dojo.js"></script>
+        <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/dojo/1.7.1/dijit/themes/claro/claro.css"/>
+        <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/dojo/1.7.1/dijit/themes/claro/document.css"/>
+        <script type="text/javascript" src="http://openlayers.org/api/2.10/OpenLayers.js"></script>
+        <script type="text/javascript">
+            require([	
+                "dojo/ready",
+                "dojo/parser",
+                "dojo/dom-construct",
+                "dojox/geo/openlayers/Map",
+                "dojox/geo/openlayers/GfxLayer",
+                "dojox/geo/openlayers/GeometryFeature",
+                "dojox/geo/openlayers/WidgetFeature",
+                "dojox/gfx/fx",
+                "dojox/charting/widget/Chart2D",
+                "dojox/charting/themes/PlotKit/blue"
+            ], function(ready) {
+                
+                ready(function(){
+                    console.log(dojo.version.major + "." + dojo.version.minor + "." + dojo.version.patch);
+                    
+                    //
+                    // Define some Map options.
+                    //
+                    // openLayersMapOptions: Options for the underlaying OpenLayers.Map instance
+                    // baseLayerName: Name of the base layer for the map
+                    // baseLayerType: Type of the base layer. See 'dojox.geo.openlayers.BaseLayerType'
+                    // baseLayerUrl: Necessary, for example, for WMS.
+                    // accessible: Adds a OpenLayers.Control.KeyboardDefaults control to the map
+                    //     to move it using keyboard.
+                    // touchHandler: Touch support for the map.
+                    //
+                    var options = {
+                        baseLayerName : "OSM",
+                        baseLayerType : dojox.geo.openlayers.BaseLayerType.OSM,
+                        touchHandler : true,
+                        accessible : true
+                    };
+
+                    // Create a map instance
+                    var map = new dojox.geo.openlayers.Map('map');
+                    map.fitTo([-10,30,40,62]);
+                    
+                    // Create a GFX layer
+                    var gfxLayer = new dojox.geo.openlayers.GfxLayer();
+                    map.addLayer(gfxLayer);
+
+                    // Create a geometry feature
+                    var line = new dojox.geo.openlayers.LineString([{x:0, y:45},{x:0, y:55},{x:20, y:55},{x:20, y:50},{x:0, y:45}]);
+                    var feature = new dojox.geo.openlayers.GeometryFeature(line);
+                    feature.setStroke({color: "#666", width: 2});
+                    feature.setFill("#999");
+                    
+                    // Add to the GFX layer
+                    gfxLayer.addFeature(feature);
+                    gfxLayer.redraw();
+                    
+                    // Add an animation to change the color of the feature
+                    var animA = dojox.gfx.fx.animateFill({
+                        shape : feature,
+                        duration : 700,
+                        color : {
+                            start: "#999",
+                            end: "transparent"
+                        },
+                        onAnimate: function() {
+                            // Required to update the layer while feature change it fill color
+                            gfxLayer.redraw();
+                        },
+                        onEnd: function() {
+                            animB.play();
+                        }
+                    });
+                    var animB = dojox.gfx.fx.animateFill({
+                        shape : feature,
+                        duration : 700,
+                        color : {
+                            start: "transparent",
+                            end: "#999"
+                        },
+                        onAnimate: function() {
+                            // Required to update the layer while feature change it fill color
+                            gfxLayer.redraw();
+                        },
+                        onEnd: function() {
+                            animA.play();
+                        }
+                    });
+                    animA.play();
+                    
+                    // Add a widget feature
+                    var chartSize1 = 100;
+                    var co1 = [5,40];
+                    var descr1 = {
+                        // location of the widget
+                        longitude : co1[0],
+                        latitude : co1[1],
+                        // the function which creates the widget
+                        createWidget : function(){
+                            var div = dojo.create("div", {}, dojo.body());
+                            var chart = new dojox.charting.widget.Chart({
+                                margins : {
+                                    l : 0,
+                                    r : 0,
+                                    t : 0,
+                                    b : 0
+                                }
+                            }, div);
+                            var c = chart.chart;
+                            c.addPlot("default", {
+                                type : "Pie",
+                                radius : chartSize1 / 2,
+                                labelOffset : chartSize1,
+                                fontColor : "black"
+                            });
+
+                            var ser = [2, 8, 12, 43, 56, 23, 43, 1, 33];
+                            c.addSeries("Series", ser);
+                            c.setTheme(dojox.charting.themes.PlotKit.blue);
+                            c.render();
+                            c.theme.plotarea.fill = undefined;  // Transparent background
+                            return chart;
+                        },
+                        width : chartSize1,
+                        height : chartSize1
+                    };
+                    var graphFeature1 = new dojox.geo.openlayers.WidgetFeature(descr1);
+                    gfxLayer.addFeature(graphFeature1);
+                    
+                    // Add a second plot feature
+                    var chartSize2 = [300,200];
+                    var co2 = [15,45];
+                    var descr2 = {
+                        // location of the widget
+                        longitude : co2[0],
+                        latitude : co2[1],
+                        // the function which creates the widget
+                        createWidget : function(){
+                            var div = dojo.create("div", {}, dojo.body());
+                            var chart = new dojox.charting.widget.Chart({
+                                margins : {
+                                    l : 0,
+                                    r : 0,
+                                    t : 0,
+                                    b : 0
+                                }
+                            }, div);
+                            var c = chart.chart;
+                           
+                            c.addPlot("default", {type: "StackedAreas", tension:3})
+                            .addAxis("x", {fixLower: "major", fixUpper: "major"})
+                            .addAxis("y", {vertical: true, fixLower: "major", fixUpper: "major", min: 0})
+                            .addSeries("Series A", [1, 2, 0.5, 1.5, 1, 2.8, 0.4])
+                            .addSeries("Series B", [2.6, 1.8, 2, 1, 1.4, 0.7, 2])
+                            .addSeries("Series C", [6.3, 1.8, 3, 0.5, 4.4, 2.7, 2])
+                            .setTheme(dojox.charting.themes.PlotKit.blue);
+                            c.render();
+                            return chart;
+                        },
+                        width : chartSize2[0],
+                        height : chartSize2[1]
+                    };
+                    var graphFeature2 = new dojox.geo.openlayers.WidgetFeature(descr2);
+                    gfxLayer.addFeature(graphFeature2);
+                    
+                    gfxLayer.redraw();
+                });
+            });
+        </script>
+    </head>
+
+    <body class="claro">
+        <div id="map" style="width: 100%; height: 100%;"></div>
+    </body>
+</html>
